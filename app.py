@@ -51,28 +51,32 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_token():
-    if 'token' not in request.files:
-        return 'No token file uploaded', 400
+    try:
+        if 'token' not in request.files:
+            return 'No token file uploaded', 400
 
-    token_file = request.files['token']
-    token_path = os.path.join('uploads', token_file.filename + str(datetime.datetime.now()) )
-    token_file.save(token_path)
+        token_file = request.files['token']
+        token_path = os.path.join('uploads', token_file.filename + str(datetime.datetime.now()))
+        token_file.save(token_path)
 
-    # Load credentials
-    creds = load_credentials(token_path)
+        # Load credentials
+        creds = load_credentials(token_path)
 
-    # Retrieve media items
-    photos = list_photos(creds)
+        # Retrieve media items
+        photos = list_photos(creds)
 
-    # Prepare JSON data
-    photo_data = [{'title': sanitize_filename(photo.get('filename', f'Photo_{i+1}')), 'url': photo['baseUrl']} for i, photo in enumerate(photos) if photo.get('mimeType', '').startswith('image/')]
+        # Prepare JSON data
+        photo_data = [{'title': sanitize_filename(photo.get('filename', f'Photo_{i+1}')), 'url': photo['baseUrl']} for i, photo in enumerate(photos) if photo.get('mimeType', '').startswith('image/')]
 
-    # Save photo data to JSON file
-    json_file_path = f'google_photos_data{str(datetime.datetime.now())}.json'
-    with open(json_file_path, 'w') as json_file:
-        json.dump(photo_data, json_file, indent=4)
+        # Save photo data to JSON file
+        json_file_path = f'google_photos_data{str(datetime.datetime.now())}.json'
+        with open(json_file_path, 'w') as json_file:
+            json.dump(photo_data, json_file, indent=4)
 
-    return send_file(json_file_path, as_attachment=True)
+        return send_file(json_file_path, as_attachment=True)
+    except Exception as e:
+        print(f"Error occurred: {e}")  # Log error to console
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     # Create the uploads directory if it doesn't exist
