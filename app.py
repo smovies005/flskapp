@@ -3,8 +3,7 @@ import requests
 import pickle
 import re
 import json
-from flask import Flask, request, jsonify, send_file, render_template
-from google.auth.transport.requests import Request
+from flask import Flask, request, jsonify, render_template
 from google.auth.transport.requests import AuthorizedSession
 import datetime
 
@@ -56,29 +55,27 @@ def upload_token():
             return 'No token file uploaded', 400
 
         token_file = request.files['token']
-        token_path = os.path.join('uploads', token_file.filename + str(datetime.datetime.now()))
-        token_file.save(token_path)
-
-        # Load credentials
-        creds = load_credentials(token_path)
+        # Use in-memory storage instead of saving to a file
+        token_data = token_file.read()  # Read the token file directly into memory
+        creds = pickle.loads(token_data)  # Load credentials from in-memory bytes
 
         # Retrieve media items
         photos = list_photos(creds)
 
         # Prepare JSON data
-        photo_data = [{'title': sanitize_filename(photo.get('filename', f'Photo_{i+1}')), 'url': photo['baseUrl']} for i, photo in enumerate(photos) if photo.get('mimeType', '').startswith('image/')]
+        photo_data = [
+            {
+                'title': sanitize_filename(photo.get('filename', f'Photo_{i+1}')),
+                'url': photo['baseUrl']
+            } 
+            for i, photo in enumerate(photos) if photo.get('mimeType', '').startswith('image/')
+        ]
 
-        # Save photo data to JSON file
-        json_file_path = f'google_photos_data{str(datetime.datetime.now())}.json'
-        with open(json_file_path, 'w') as json_file:
-            json.dump(photo_data, json_file, indent=4)
-
-        return send_file(json_file_path, as_attachment=True)
+        # Directly return the JSON response
+        return jsonify(photo_data)
     except Exception as e:
         print(f"Error occurred: {e}")  # Log error to console
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    # Create the uploads directory if it doesn't exist
-    os.makedirs('uploads', exist_ok=True)
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
