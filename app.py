@@ -77,4 +77,4 @@ def upload_token():
 if __name__ == '__main__':
     # Create the uploads directory if it doesn't exist
     os.makedirs('uploads', exist_ok=True)
-    app.run()
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
